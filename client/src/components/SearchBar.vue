@@ -1,95 +1,80 @@
 <template>
-  <div class="search-bar">
-    <input
-      v-model="query"
-      placeholder="검색어 입력… (예: dia, 호닝기)"
-      @input="onInput"
-    />
-    <ul v-if="results.length">
-      <li
-        v-for="r in results"
-        :key="r.id"
-        @click="select(r)"
-      >
-        {{ r.name }} — {{ r.location }}
-      </li>
-    </ul>
+  <!-- ... -->
+  <div class="top-controls">
+    <div class="search-wrapper">
+      <input
+        v-model="searchQuery"
+        @input="onInput"
+        @keyup.enter="executeSearch"
+        placeholder="검색어 입력… (예: dia, 호닝기)"
+      />
+      <ul v-if="showSuggestions" class="suggestions-list">
+        <li
+          v-for="s in suggestions"
+          :key="s"
+          @click="selectSuggestion(s)"
+        >
+          {{ s }}
+        </li>
+      </ul>
+    </div>
+    <button @click="executeSearch">검색</button>
+    <!-- ... -->
   </div>
+  <!-- ... -->
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
-import axios from 'axios';
-import Fuse from 'fuse.js';
+import { ref, onMounted } from 'vue'
+import axios from 'axios'
 
-const emit = defineEmits(['selected']);
-const query = ref('');
-const results = ref([]);
-const itemsList = ref([]);
-let fuse = null;
+const searchQuery     = ref('')
+const suggestions     = ref([])
+const showSuggestions = ref(false)
+let debounceTimeout   = null
 
-onMounted(async () => {
-  // 1) 전체 아이템 미리 불러오기
-  const res = await axios.get('http://localhost:3000/api/items');
-  itemsList.value = res.data.map(item => ({
-    id: item.id,
-    name: item.name,
-    location: `${item.shelf.number}번 선반 ${item.level.number}층`,
-  }));
+async function fetchItems() {
+  const res = await axios.get('http://localhost:3000/api/items')
+  items.value = res.data
+}
 
-  // 2) Fuse 인스턴스 생성 (name 필드 기준, threshold 낮추면 더 엄격)
-  fuse = new Fuse(itemsList.value, {
-    keys: ['name'],
-    threshold: 0.3,
-    ignoreLocation: true,
-  });
-});
+async function doSearch(q) {
+  if (!q) {
+    await fetchItems()
+  } else {
+    const res = await axios.get(
+      `http://localhost:3000/api/items/search?q=${encodeURIComponent(q)}`
+    )
+    items.value = res.data
+  }
+}
 
 function onInput() {
-  if (!query.value.trim()) {
-    results.value = [];
-    return;
+  const q = searchQuery.value.trim()
+  clearTimeout(debounceTimeout)
+  if (!q) {
+    suggestions.value = []
+    showSuggestions.value = false
+    return
   }
-  // 3) Fuse.js로 유사 검색 후 상위 10개만
-  const fuseResults = fuse.search(query.value);
-  results.value = fuseResults.slice(0, 10).map(r => r.item);
+  debounceTimeout = setTimeout(async () => {
+    const res = await axios.get(
+      `http://localhost:3000/api/items/search?q=${encodeURIComponent(q)}`
+    )
+    suggestions.value = [...new Set(res.data.map(i => i.name))].slice(0, 5)
+    showSuggestions.value = true
+  }, 300)
 }
 
-function select(item) {
-  emit('selected', item);
-  results.value = [];
-  query.value = '';
+function selectSuggestion(name) {
+  searchQuery.value = name
+  showSuggestions.value = false
+  executeSearch()
+}
+
+async function executeSearch() {
+  showSuggestions.value = false
+  await doSearch(searchQuery.value.trim())
+  matchedCoords.value = items.value.map(i => ({ shelf: i.shelf, level: i.level }))
 }
 </script>
-
-<style scoped>
-.search-bar {
-  position: relative;
-  width: 300px;
-}
-.search-bar input {
-  width: 100%;
-  padding: 0.5rem;
-  box-sizing: border-box;
-}
-.search-bar ul {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  right: 0;
-  background: white;
-  border: 1px solid #ccc;
-  max-height: 200px;
-  overflow-y: auto;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-.search-bar li {
-  padding: 0.5rem;
-  cursor: pointer;
-}
-.search-bar li:hover {
-  background: #f0f0f0;
-}
-</style>
