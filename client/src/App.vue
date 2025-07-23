@@ -261,6 +261,7 @@ function onAddFromDrawer({ shelf, level }) {
   showModal.value = true
 }
 //안녕 클레오파트라
+//세상에서 제일 가는 포테이토칩
 // 초기 로드
 onMounted(fetchItems)
 </script>
