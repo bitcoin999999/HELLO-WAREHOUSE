@@ -260,7 +260,7 @@ function onAddFromDrawer({ shelf, level }) {
   showDrawer.value = true
   showModal.value = true
 }
-
+//안녕 클레오파트라
 // 초기 로드
 onMounted(fetchItems)
 </script>
