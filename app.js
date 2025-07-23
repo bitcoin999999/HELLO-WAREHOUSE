@@ -17,6 +17,7 @@ app.get('/api/items', async (req, res) => {
   const items = await prisma.item.findMany({ include: { shelf: true, level: true } });
   res.json(items);
 });
+//rksksksksk
 
 // 2) 검색 → 위치 반환
 app.get('/api/items/search', async (req, res) => {
