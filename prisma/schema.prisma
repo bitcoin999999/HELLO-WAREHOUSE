@@ -1,0 +1,39 @@
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Shelf {
+  id     Int     @id @default(autoincrement())
+  number Int     @unique
+  levels Level[]
+  items  Item[]
+}
+
+model Level {
+  id      Int    @id @default(autoincrement())
+  number  Int
+  shelf   Shelf  @relation(fields: [shelfId], references: [id])
+  shelfId Int
+  items   Item[]
+
+  @@unique([shelfId, number])
+}
+
+model Item {
+  id          Int      @id @default(autoincrement())
+  name        String
+  quantity    Int
+  arrivalDate DateTime
+  remark      String?
+  shelf       Shelf    @relation(fields: [shelfId], references: [id])
+  shelfId     Int
+  level       Level    @relation(fields: [levelId], references: [id])
+  levelId     Int
+
+  @@index([name])
+}
