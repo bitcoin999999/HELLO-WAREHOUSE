@@ -186,6 +186,12 @@ app.post('/api/import', upload.single('file'), async (req, res) => {
   }
 });
 
+// 현재 시간을 반환
+app.get('/api/time', (req, res) => {
+  const now = new Date();
+  res.json({ time: now.toISOString() });
+});
+
 
 // 서버 기동
 const PORT = process.env.PORT || 3000;
