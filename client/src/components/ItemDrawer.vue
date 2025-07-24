@@ -1,4 +1,3 @@
-```vue
 <template>
   <transition name="drawer">
     <aside v-if="visible" class="item-drawer">
@@ -182,4 +181,3 @@ const locationItems = computed(() => {
   opacity: 0;
 }
 </style>
-```

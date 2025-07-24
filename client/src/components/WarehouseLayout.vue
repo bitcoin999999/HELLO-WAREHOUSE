@@ -1,4 +1,3 @@
-```vue
 <template>
   <svg
     :width="svgWidth"
@@ -168,4 +167,3 @@ function onShelfClick(shelfNumber, levelNumber) {
   fill: #e2e8f0;
 }
 </style>
-```
