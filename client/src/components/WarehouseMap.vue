@@ -1,4 +1,3 @@
-```vue
 <template>
   <svg
     :width="width"
@@ -167,4 +166,3 @@ function hasItem(shelf, level) {
   50% { fill-opacity: 0.9; }
 }
 </style>
-```
