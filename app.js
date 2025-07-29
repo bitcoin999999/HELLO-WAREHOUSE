@@ -19,26 +19,80 @@ app.get('/api/items', async (req, res) => {
 });
 //rksksksksk
 
-// 2) 검색 → 위치 반환
+// 2) 검색 → 부분 일치 & 유사도 추천 + 위치 정보 포함
 app.get('/api/items/search', async (req, res) => {
   const { q } = req.query;
-  const items = await prisma.item.findMany({
-    where: { name: { contains: String(q), mode: 'insensitive' } },
+
+  // 빈 검색어면 전체 반환
+  if (!q || q.trim() === '') {
+    const all = await prisma.item.findMany({ include: { shelf: true, level: true } });
+    return res.json(all.map(item => ({
+      id:          item.id,
+      name:        item.name,
+      quantity:    item.quantity,
+      arrivalDate: item.arrivalDate,
+      remark:      item.remark,
+      shelfId:     item.shelfId,
+      levelId:     item.levelId,
+      location:    `${item.shelf.number}번 선반 ${item.level.number}층`
+    })));
+  }
+
+  // 1) 부분 일치 검색
+  const candidates = await prisma.item.findMany({
+    where:   { name: { contains: q, mode: 'insensitive' } },
     include: { shelf: true, level: true },
   });
-  res.json(
-    items.map(item => ({
-      id: item.id,
-      name: item.name,
-      quantity: item.quantity,
+  if (candidates.length > 0) {
+    return res.json(candidates.map(item => ({
+      id:          item.id,
+      name:        item.name,
+      quantity:    item.quantity,
       arrivalDate: item.arrivalDate,
-      remark: item.remark,
-      location: item.shelf && item.level
-        ? `${item.shelf.number}번 선반 ${item.level.number}층`
-        : ''
+      remark:      item.remark,
+      shelfId:     item.shelfId,
+      levelId:     item.levelId,
+      location:    `${item.shelf.number}번 선반 ${item.level.number}층`
+    })));
+  }
+
+  // 2) 유사도(Levenshtein) 추천
+  const allItems = await prisma.item.findMany({ include: { shelf: true, level: true } });
+  function lev(a, b) {
+    const dp = Array.from({ length: a.length+1 }, () => Array(b.length+1).fill(0));
+    for (let i=0; i<=a.length; i++) dp[i][0] = i;
+    for (let j=0; j<=b.length; j++) dp[0][j] = j;
+    for (let i=1; i<=a.length; i++) {
+      for (let j=1; j<=b.length; j++) {
+        dp[i][j] = a[i-1]===b[j-1]
+          ? dp[i-1][j-1]
+          : 1 + Math.min(dp[i-1][j], dp[i][j-1], dp[i-1][j-1]);
+      }
+    }
+    return dp[a.length][b.length];
+  }
+  const suggestions = allItems
+    .map(item => ({
+      item,
+      score: 1 - lev(q, item.name)/Math.max(q.length, item.name.length)
     }))
-  );
+    .filter(x => x.score >= 0.4)
+    .sort((a,b) => b.score - a.score)
+    .slice(0, 10)
+    .map(x => x.item);
+
+  res.json(suggestions.map(item => ({
+    id:          item.id,
+    name:        item.name,
+    quantity:    item.quantity,
+    arrivalDate: item.arrivalDate,
+    remark:      item.remark,
+    shelfId:     item.shelfId,
+    levelId:     item.levelId,
+    location:    `${item.shelf.number}번 선반 ${item.level.number}층`
+  })));
 });
+
 
 // 3) 아이템 추가
 app.post('/api/items', async (req, res) => {

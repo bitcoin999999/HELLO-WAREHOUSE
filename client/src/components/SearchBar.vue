@@ -25,56 +25,41 @@
 </template>
 <!-- adfsasdf -->
 <script setup>
-import { ref, onMounted } from 'vue'
-import axios from 'axios'
+import { ref } from 'vue';
+import axios from 'axios';
 
-const searchQuery     = ref('')
-const suggestions     = ref([])
-const showSuggestions = ref(false)
-let debounceTimeout   = null
+const emit = defineEmits(['match']);
+const searchQuery     = ref('');
+const suggestions     = ref([]);
+const showSuggestions = ref(false);
 
-async function fetchItems() {
-  const res = await axios.get('http://localhost:3000/api/items')
-  items.value = res.data
+let debounceTimer = null;
+function onInput() {
+  clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(() => doSearch(searchQuery.value), 300);
 }
 
 async function doSearch(q) {
-  if (!q) {
-    await fetchItems()
-  } else {
-    const res = await axios.get(
-      `http://localhost:3000/api/items/search?q=${encodeURIComponent(q)}`
-    )
-    items.value = res.data
+  if (!q.trim()) {
+    showSuggestions.value = false;
+    return;
   }
-}
-
-function onInput() {
-  const q = searchQuery.value.trim()
-  clearTimeout(debounceTimeout)
-  if (!q) {
-    suggestions.value = []
-    showSuggestions.value = false
-    return
-  }
-  debounceTimeout = setTimeout(async () => {
-    const res = await axios.get(
-      `http://localhost:3000/api/items/search?q=${encodeURIComponent(q)}`
-    )
-    suggestions.value = [...new Set(res.data.map(i => i.name))].slice(0, 5)
-    showSuggestions.value = true
-  }, 300)
-}
-
-function selectSuggestion(name) {
-  searchQuery.value = name
-  showSuggestions.value = false
-  executeSearch()
+  const { data } = await axios.get(`/api/items/search?q=${encodeURIComponent(q)}`);
+  suggestions.value = [...new Set(data.map(i => i.name))].slice(0,5);
+  showSuggestions.value = true;
 }
 
 async function executeSearch() {
-  showSuggestions.value = false
-  await doSearch(searchQuery.value.trim())
-  matchedCoords.value = items.value.map(i => ({ shelf: i.shelf, level: i.level }))
+  const q = searchQuery.value.trim();
+  if (!q) return;
+  const { data } = await axios.get(`/api/items/search?q=${encodeURIComponent(q)}`);
+  const matched = data.map(i => ({ shelf: Number(i.shelfId), level: Number(i.levelId) }));
+  emit('match', matched);
+  showSuggestions.value = false;
+}
+
+function selectSuggestion(name) {
+  searchQuery.value = name;
+  executeSearch();
 }
 </script>
