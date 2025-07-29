@@ -164,10 +164,20 @@ function selectSuggestion(name) {
 
 // 검색 실행
 async function executeSearch() {
-  showSuggestions.value = false
-  await doSearch(searchQuery.value.trim())
-  matchedCoords.value = items.value.map(i => ({ shelf: i.shelf, level: i.level }))
+  // 검색 제안어를 닫습니다.
+  showSuggestions.value = false;
+  // 검색어를 트리밍하여 실제 검색을 수행합니다.
+  await doSearch(searchQuery.value.trim());
+  // 검색 결과를 기반으로 하이라이트할 선반/층 좌표를 계산합니다.
+  matchedCoords.value = items.value.map(i => {
+    // 검색 API가 shelfId/levelId와 함께 shelf/level 객체를 모두 포함하도록 바뀌었습니다.
+    // 우선적으로 숫자 ID를 사용하고 없으면 관계 객체의 number를 사용합니다.
+    const shelfNo = i.shelfId ?? (i.shelf ? i.shelf.number : undefined);
+    const levelNo = i.levelId ?? (i.level ? i.level.number : undefined);
+    return { shelf: shelfNo, level: levelNo };
+  });
 }
+
 
 // 선반/층 선택
 function onSelectShelf({ shelf, level }) {

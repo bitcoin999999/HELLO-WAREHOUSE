@@ -17,47 +17,55 @@ app.get('/api/items', async (req, res) => {
   const items = await prisma.item.findMany({ include: { shelf: true, level: true } });
   res.json(items);
 });
-//rksksksksk
 
 // 2) 검색 → 부분 일치 & 유사도 추천 + 위치 정보 포함
 app.get('/api/items/search', async (req, res) => {
-  const { q } = req.query;
+  const q = (req.query.q || '').trim();
+  const include = { shelf: true, level: true };
 
   // 빈 검색어면 전체 반환
-  if (!q || q.trim() === '') {
-    const all = await prisma.item.findMany({ include: { shelf: true, level: true } });
-    return res.json(all.map(item => ({
-      id:          item.id,
-      name:        item.name,
-      quantity:    item.quantity,
-      arrivalDate: item.arrivalDate,
-      remark:      item.remark,
-      shelfId:     item.shelfId,
-      levelId:     item.levelId,
-      location:    `${item.shelf.number}번 선반 ${item.level.number}층`
-    })));
+  if (q === '') {
+    const all = await prisma.item.findMany({ include });
+    return res.json(
+      all.map(item => ({
+        id:          item.id,
+        name:        item.name,
+        quantity:    item.quantity,
+        arrivalDate: item.arrivalDate,
+        remark:      item.remark,
+        shelfId:     item.shelfId,
+        levelId:     item.levelId,
+        shelf:       item.shelf,
+        level:       item.level,
+        location:    `${item.shelf.number}번 선반 ${item.level.number}층`
+      }))
+    );
   }
 
   // 1) 부분 일치 검색
   const candidates = await prisma.item.findMany({
     where:   { name: { contains: q, mode: 'insensitive' } },
-    include: { shelf: true, level: true },
+    include
   });
   if (candidates.length > 0) {
-    return res.json(candidates.map(item => ({
-      id:          item.id,
-      name:        item.name,
-      quantity:    item.quantity,
-      arrivalDate: item.arrivalDate,
-      remark:      item.remark,
-      shelfId:     item.shelfId,
-      levelId:     item.levelId,
-      location:    `${item.shelf.number}번 선반 ${item.level.number}층`
-    })));
+    return res.json(
+      candidates.map(item => ({
+        id:          item.id,
+        name:        item.name,
+        quantity:    item.quantity,
+        arrivalDate: item.arrivalDate,
+        remark:      item.remark,
+        shelfId:     item.shelfId,
+        levelId:     item.levelId,
+        shelf:       item.shelf,
+        level:       item.level,
+        location:    `${item.shelf.number}번 선반 ${item.level.number}층`
+      }))
+    );
   }
 
   // 2) 유사도(Levenshtein) 추천
-  const allItems = await prisma.item.findMany({ include: { shelf: true, level: true } });
+  const allItems = await prisma.item.findMany({ include });
   function lev(a, b) {
     const dp = Array.from({ length: a.length+1 }, () => Array(b.length+1).fill(0));
     for (let i=0; i<=a.length; i++) dp[i][0] = i;
@@ -81,28 +89,28 @@ app.get('/api/items/search', async (req, res) => {
     .slice(0, 10)
     .map(x => x.item);
 
-  res.json(suggestions.map(item => ({
-    id:          item.id,
-    name:        item.name,
-    quantity:    item.quantity,
-    arrivalDate: item.arrivalDate,
-    remark:      item.remark,
-    shelfId:     item.shelfId,
-    levelId:     item.levelId,
-    location:    `${item.shelf.number}번 선반 ${item.level.number}층`
-  })));
+  return res.json(
+    suggestions.map(item => ({
+      id:          item.id,
+      name:        item.name,
+      quantity:    item.quantity,
+      arrivalDate: item.arrivalDate,
+      remark:      item.remark,
+      shelfId:     item.shelfId,
+      levelId:     item.levelId,
+      shelf:       item.shelf,
+      level:       item.level,
+      location:    `${item.shelf.number}번 선반 ${item.level.number}층`
+    }))
+  );
 });
-
 
 // 3) 아이템 추가
 app.post('/api/items', async (req, res) => {
   try {
     const { id, ...data } = req.body;
     const newItem = await prisma.item.create({
-      data: {
-        ...data,
-        arrivalDate: new Date(data.arrivalDate),
-      },
+      data: { ...data, arrivalDate: new Date(data.arrivalDate) },
     });
     res.json(newItem);
   } catch (err) {
@@ -118,10 +126,7 @@ app.put('/api/items/:id', async (req, res) => {
     const { id: _omit, ...data } = req.body;
     const updated = await prisma.item.update({
       where: { id: Number(id) },
-      data: {
-        ...data,
-        arrivalDate: new Date(data.arrivalDate),
-      },
+      data: { ...data, arrivalDate: new Date(data.arrivalDate) },
     });
     res.json(updated);
   } catch (err) {
@@ -174,72 +179,55 @@ app.post('/api/import', upload.single('file'), async (req, res) => {
     await wb.xlsx.load(req.file.buffer);
     const ws = wb.worksheets[0];
 
-    // 1) 헤더 맵핑
+    // 헤더 맵핑
     const headerMap = {};
     ws.getRow(1).eachCell((cell, col) => {
-      if (typeof cell.value === 'string') {
-        headerMap[cell.value.trim()] = col;
-      }
+      if (typeof cell.value === 'string') headerMap[cell.value.trim()] = col;
     });
 
-    // 2) 필수 칼럼 검사
+    // 필수 칼럼 검사
     const required = ['내역', '요청일', '공급업체명'];
     for (const h of required) {
       if (!headerMap[h]) {
         return res.status(400).json({ error: `칼럼 "${h}"이(가) 없습니다.` });
       }
     }
-    // 수량 칼럼: '요청수량' 또는 '작지수량'
+
+    // 수량 칼럼 찾기
     const quantityCol = headerMap['요청수량'] || headerMap['작지수량'];
     if (!quantityCol) {
-      return res
-        .status(400)
-        .json({ error: `칼럼 "요청수량" 또는 "작지수량" 중 하나가 필요합니다.` });
+      return res.status(400).json({ error: `수량 칼럼이 없습니다.` });
     }
 
-    // 3) 데이터 추출
+    // 데이터 추출 & 저장
     const rows = [];
     ws.eachRow((row, idx) => {
-      if (idx === 1) return;  // 헤더 스킵
-
-      // 셀 값 가져오는 헬퍼
+      if (idx === 1) return; // 헤더 스킵
       const get = col => row.getCell(col).value;
-
-      // 날짜 파싱
-      const rawDate = get(headerMap['요청일']);
-      let arrivalDate;
-      if (typeof rawDate === 'number') {
-        arrivalDate = new Date(Math.round((rawDate - 25569) * 86400000));
-      } else if (rawDate instanceof Date) {
-        arrivalDate = rawDate;
-      } else {
-        arrivalDate = new Date(String(rawDate));
-      }
-
+      let rawDate = get(headerMap['요청일']);
+      let arrivalDate = rawDate instanceof Date
+        ? rawDate
+        : new Date(typeof rawDate === 'number'
+            ? Math.round((rawDate - 25569) * 86400000)
+            : String(rawDate)
+          );
       rows.push({
         name:        String(get(headerMap['내역']) || '').trim(),
-        arrivalDate,  // 파싱된 날짜
-        remark:      String(get(headerMap['공급업체명']) || '').trim(),
-        // ❗ 여기서 quantityCol 사용하기!
         quantity:    Number(get(quantityCol) || 0),
+        arrivalDate,
+        remark:      String(get(headerMap['공급업체명']) || '').trim(),
         shelfId:     null,
         levelId:     null
       });
     });
 
-    // 4) DB 저장 (중복 스킵)
-    const result = await prisma.item.createMany({
-      data: rows,
-      skipDuplicates: true
-    });
-
+    const result = await prisma.item.createMany({ data: rows, skipDuplicates: true });
     return res.json({ success: true, imported: result.count });
   } catch (err) {
     console.error('POST /api/import Error:', err);
     return res.status(500).json({ error: err.message });
   }
 });
-
 
 // 서버 기동
 const PORT = process.env.PORT || 3000;
