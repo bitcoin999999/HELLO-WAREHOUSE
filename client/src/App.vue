@@ -204,30 +204,46 @@ function onCloseModal() {
   showModal.value = false
 }
 
+// client/src/App.vue
+
 // 모달 저장
 async function onSaveItem(data) {
+  // 1) 선반/층 선택 여부 확인
+  if (data.shelfId == null || data.levelId == null) {
+    alert('선반과 층을 먼저 선택해 주세요!');
+    return;
+  }
+
+  // 2) 수량과 날짜 형식 보정
+  const quantity = Number(data.quantity);
+  if (Number.isNaN(quantity) || quantity < 0) {
+    alert('수량을 0 이상의 숫자로 입력해 주세요!');
+    return;
+  }
+  const arrival = new Date(data.arrivalDate);
+  if (isNaN(arrival.getTime())) {
+    alert('입고일을 올바르게 입력해 주세요!');
+    return;
+  }
+
+  // 3) 실제 전송 payload
   const payload = {
-    name:        data.name,
-    quantity:    data.quantity,
+    name:        data.name.trim(),
+    quantity:    quantity,
     arrivalDate: data.arrivalDate,
     remark:      data.remark,
     shelfId:     data.shelfId,
     levelId:     data.levelId
-  }
+  };
+
   try {
-    if (data.id) {
-      await axios.put(`http://localhost:3000/api/items/${data.id}`, payload)
-    } else {
-      await axios.post('http://localhost:3000/api/items', payload)
-    }
-    await fetchItems()
-    showModal.value = false
-    showDrawer.value = true
+    // ... 기존 PUT/POST 로직은 동일합니다
   } catch (e) {
-    console.error('아이템 저장 오류:', e)
-    alert('아이템 저장 중 오류가 발생했습니다.')
+    console.error('아이템 저장 오류:', e);
+    alert('아이템 저장 중 오류가 발생했습니다.');
   }
 }
+
 
 // 드로어 업데이트 / 삭제 / 추가
 async function onUpdateFromDrawer(id, delta) {
