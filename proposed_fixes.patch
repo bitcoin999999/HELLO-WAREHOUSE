@@ -1,0 +1,51 @@
+diff --git a/client/src/App.vue b/client/src/App.vue
+index e1276ad..a9f3b44 100644
+--- a/client/src/App.vue
++++ b/client/src/App.vue
+@@ -46,7 +46,13 @@ async function doSearch(q) {
+-  if (!q) return fetchItems()
++  if (!q) {
++    await fetchItems();
++    return items.value;
++  }
+   try {
+     const res = await axios.get(
+       \`http://localhost:3000/api/items/search?q=\${encodeURIComponent(q)}\`
+@@ -53,7 +59,13 @@ async function doSearch(q) {
+-    items.value = res.data
++    items.value = res.data;
++    return res.data;
+   } catch (e) {
+-    console.error('검색 오류:', e)
+-    items.value = []
++    console.error('검색 오류:', e);
++    items.value = [];
++    return [];
+   }
+ }
+@@ -89,7 +101,8 @@ async function executeSearch() {
+-async function executeSearch() {
++async function executeSearch() {
+-  showSuggestions.value = false;
+-  await doSearch(searchQuery.value.trim());
+-  matchedCoords.value = items.value.map(i => {
++  showSuggestions.value = false;
++  const result = await doSearch(searchQuery.value.trim());
++  matchedCoords.value = result.map(i => {
+     const shelfNo = i.shelfId ?? (i.shelf ? i.shelf.number : undefined);
+     const levelNo = i.levelId ?? (i.level ? i.level.number : undefined);
+     return { shelf: shelfNo, level: levelNo };
+@@ -406,7 +419,7 @@ button:hover {
+-  background: linear-gradient(90deg, var(--secondary-purple), var(--accent-green));
++  background: linear-gradient(90deg, var(--primary-blue), var(--secondary-purple));
+ }
+diff --git a/client/src/components/WarehouseMap.vue b/client/src/components/WarehouseMap.vue
+index 3f2ab67..5d8c9ab 100644
+--- a/client/src/components/WarehouseMap.vue
++++ b/client/src/components/WarehouseMap.vue
+@@ -6,7 +6,7 @@ const props = defineProps({
+-  levelsCount: { type: Number, default: 5 },
++  levelsCount: { type: Number, default: 4 },
+   highlighted: { type: Array, default: () => [] },
+   items:       { type: Array, default: () => [] },
+   cellSize:    { type: Number, default: 100 }
