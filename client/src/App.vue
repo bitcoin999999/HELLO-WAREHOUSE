@@ -44,7 +44,7 @@
     <!-- 메인 콘텐츠 -->
     <main class="main-content">
       <WarehouseMap
-        :shelves-count="4"
+        :shelves-count="5"
         :levels-count="5"
         :items="items"
         :highlighted="matchedCoords"
