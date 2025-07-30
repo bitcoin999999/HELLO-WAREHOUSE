@@ -2,7 +2,7 @@
   <div id="app" :class="{ 'dark-mode': darkMode }">
     <!-- 헤더 -->
     <header class="header">
-      <h1 class="gradient-text">자동화팀의 창고</h1>
+     <h1 class="gradient-text">🚀 Automation Warehouse 2.0</h1>
     </header>
 
     <!-- 사이드바 -->

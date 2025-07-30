@@ -8,17 +8,20 @@
   >
     <defs>
       <linearGradient id="cellGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stop-color="#3b82f6" stop-opacity="0.7" />
-        <stop offset="100%" stop-color="#8b5cf6" stop-opacity="0.7" />
-      </linearGradient>
-      <linearGradient id="emptyGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stop-color="#10b981" stop-opacity="0.7" />
-        <stop offset="100%" stop-color="#34d399" stop-opacity="0.7" />
-      </linearGradient>
-      <linearGradient id="hitGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stop-color="#059669" stop-opacity="0.7" />
-        <stop offset="100%" stop-color="#10b981" stop-opacity="0.7" />
-      </linearGradient>
+  <stop offset="0%"  stop-color="#6366F1" stop-opacity="0.8" />  <!-- 연보라 -->
+  <stop offset="100%" stop-color="#EC4899" stop-opacity="0.8" />  <!-- 파스텔 핑크 -->
+</linearGradient>
+
+<linearGradient id="emptyGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+  <stop offset="0%"  stop-color="#A5B4FC" stop-opacity="0.7" />  <!-- 파랑빛 라벤더 -->
+  <stop offset="100%" stop-color="#FBCFE8" stop-opacity="0.7" />  <!-- 연핑크 -->
+</linearGradient>
+
+<linearGradient id="hitGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+  <stop offset="0%"  stop-color="#FDBA74" stop-opacity="0.8" />  <!-- 파스텔 오렌지 -->
+  <stop offset="100%" stop-color="#F47C7C" stop-opacity="0.8" />  <!-- 코랄핑크 -->
+</linearGradient>
+
       <filter id="blur" x="-50%" y="-50%" width="200%" height="200%">
         <feGaussianBlur in="SourceGraphic" stdDeviation="1" result="blur" />
         <feMerge>
